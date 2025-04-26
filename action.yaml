@@ -33,7 +33,7 @@ runs:
           "content": ":hammer_and_wrench: **Docker image builds successfully**",
           "embeds": [
             {
-              "color": "#36a64f",
+              "color": 3581519,
               "author": {
                 "name": "$GITHUB_ACTOR",
                 "url": "$GITHUB_ACTOR_URL",
