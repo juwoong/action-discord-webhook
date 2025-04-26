@@ -1,0 +1,77 @@
+name: "action-discord-webhook"
+description: "Send message to Slack with Webhook URL"
+inputs:
+  webhook_url:
+    description: "Discord Webhook URL"
+    required: true
+  short_sha:
+    description: "Short SHA"
+    required: true
+  image_name:
+    description: "Docker image name"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Send message to Slack
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook_url }}
+        SHORT_SHA: ${{ inputs.short_sha }}
+        IMAGE_NAME: ${{ inputs.image_name }}
+      run: |
+        COMMIT_MESSAGE=$(git log -1 --pretty=format:%s)
+        BRANCH_NAME=${GITHUB_REF#refs/heads/}
+        COMMIT_SHA=$(git rev-parse HEAD)
+        CURRENT_TIME=$(date --iso-8601=seconds)
+        USER_INFO=$(curl https://api.github.com/users/$GITHUB_ACTOR)
+        GITHUB_ACTOR_IMAGE=$(echo $USER_INFO | jq -r '.avatar_url')
+        GITHUB_ACTOR_URL=$(echo $USER_INFO | jq -r '.html_url')
+
+        curl -X POST -H 'Content-type: application/json' --data @<(cat <<EOF
+        {
+          "content": ":hammer_and_wrench: **Docker image builds successfully**",
+          "embeds": [
+            {
+              "color": "#36a64f",
+              "author": {
+                "name": "$GITHUB_ACTOR",
+                "url": "$GITHUB_ACTOR_URL",
+                "icon_url": "$GITHUB_ACTOR_IMAGE"
+              },
+              "title": "$GITHUB_REPOSITORY",
+              "url": "https://github.com/$GITHUB_REPOSITORY",
+              "fields": [
+                {
+                  "name": "Commit message",
+                  "value": "$COMMIT_MESSAGE"
+                },
+                {
+                  "name": "image",
+                  "value": "$IMAGE_NAME",
+                  "inline": true
+                },
+                {
+                  "name": "branch",
+                  "value": "$BRANCH_NAME",
+                  "inline": true
+                },
+                {
+                  "name": "pushed time",
+                  "value": "$CURRENT_TIME",
+                  "inline": true
+                },
+                {
+                  "name": "commit",
+                  "value": "[${SHORT_SHA}](https://github.com/$GITHUB_REPOSITORY/commit/$COMMIT_SHA)",
+                  "inline": true
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+        ) $WEBHOOK_URL
+branding:
+  icon: "message-circle"
+  color: "blue"
